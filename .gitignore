@@ -17,6 +17,8 @@ env/
 .ipynb_checkpoints/
 
 # ---- Data (raw pulls, parquet, query results stay local/S3, not in git) ----
+Bd_Exportdata/
+BIE_roles_information
 data/
 *.parquet
 *.csv
