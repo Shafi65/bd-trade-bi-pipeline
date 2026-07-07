@@ -32,6 +32,10 @@ athena-results/
 build/
 package/
 
+# ---- Local-only notes (not public yet) ----
+LEARNING.md
+CLAUDE.md
+
 # ---- OS / editor / local tooling ----
 .DS_Store
 .vscode/
