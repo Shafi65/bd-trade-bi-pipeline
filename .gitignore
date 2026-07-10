@@ -36,6 +36,9 @@ package/
 LEARNING.md
 CLAUDE.md
 
+# ---- Comtrade-era stretch scope: kept locally, not in the public repo ----
+scripts/verify_coverage.py
+
 # ---- OS / editor / local tooling ----
 .DS_Store
 .vscode/
