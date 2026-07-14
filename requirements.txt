@@ -6,6 +6,10 @@ python-dotenv>=1.0.0    # loads the git-ignored .env so our key never touches co
 pandas>=2.0             # reshape (wide->long) + group-by reconciliation
 openpyxl>=3.1           # read the .xlsx workbook (streaming, read-only)
 
+# --- M2: PDF extraction ---
+pypdf>=4.0              # fast text extraction (clean, well-formed PDF years)
+pdfplumber>=0.11        # layout/positional extraction (messy older PDF years)
+
 # --- Later milestones (uncomment when reached) ---
 # pyarrow               # write partitioned Parquet (M3)
 # boto3                 # AWS SDK for Python (M4+)

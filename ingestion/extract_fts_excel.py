@@ -199,11 +199,15 @@ def _off(a, b):
     return abs(a - b) / abs(b)
 
 
-def reconcile(df, parents, grand, table01, table01_grand, flow, parent_key):
-    """Run the checks (value AND quantity), print a report, return True on PASS."""
+def reconcile(df, parents, grand, table01, table01_grand, flow, parent_key, fy=FY):
+    """Run the checks (value AND quantity), print a report, return True on PASS.
+
+    `fy` labels the report; defaults to this module's FY so the M1 caller is
+    unchanged, but the PDF extractor passes each historical year explicitly.
+    """
     grand_v, grand_q = grand
     label = {"X": "EXPORTS", "M": "IMPORTS"}[flow]
-    print(f"\n=== FY {FY} {label} — reconciliation ===")
+    print(f"\n=== FY {fy} {label} — reconciliation ===")
     ok = True
 
     # (1) source integrity: each header's H1 + H2 == its full-year column (value & qty)

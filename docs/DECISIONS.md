@@ -22,6 +22,10 @@ Five fiscal years arrive in three different packagings, but underneath they cont
 
 The expert's questions are all export-side, so exports are the headline. Import data is still extracted, but as supporting context — chiefly how import-dependent the export machine is (imported inputs relative to export earnings), which frames whether better prices actually translate into value retained.
 
+## When the source contradicts itself
+
+The older PDF years failed the reconciliation gate, and the reasons turned out to be physical defects in the publications themselves: one import volume contains the original print *and* a partially revised re-print of 41 countries (with different numbers); one country's section was interrupted mid-print by its own revision, with the original's tail misplaced 500 pages later; one export volume simply truncates mid-commodity. None of this is guessable — but all of it is decidable, because BBS also publishes the same data at coarser grains (chapter totals, commodity totals, and a country-major mirror table). Every conflict was arbitrated the same way: reconstruct each candidate reading and keep the one that matches the independently published control totals (the winner matched all 97 chapter totals; the loser failed 60). Where a primary table omits detail, it is filled only from BBS's own mirror table, never estimated. The principle: when a source is internally inconsistent, don't average, don't guess, don't drop the year — let the publisher's own control totals pick the truth, and record the surgery explicitly in config so it stays visible.
+
 ## Why the pipeline is shaped the way it is
 
 The whole dataset is a few hundred megabytes, so the infrastructure matches the workload: extraction runs once, locally, as a historical backfill, and the cloud's job starts where durability matters — storage, a queryable catalog, SQL, dashboards — all serverless and effectively free at this scale. Nothing ships to the cloud until the reconciliation gate above says the data deserves it.
