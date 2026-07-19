@@ -191,8 +191,13 @@ def apply_repairs(records, repairs, occ):
     return [r for r in records if r]
 
 
-def parse_table04(path, flow, orientation, pages=None, repairs=None):
-    """Flatten a Table 04 PDF into canonical per-half fact rows (mirrors M1)."""
+def parse_table04(path, flow, orientation, pages=None, repairs=None, desc_sink=None):
+    """Flatten a Table 04 PDF into canonical per-half fact rows (mirrors M1).
+
+    `desc_sink` (optional): a dict populated as a pure SIDE-WRITE with the BBS
+    product label per HS8 (`{hs8: (unit, description)}`) for building dim_hs in M3.
+    None for every existing caller/test, so the returned facts are unchanged.
+    """
     commodity_major = orientation == "commodity_major"
     parent_key = "hs8" if commodity_major else "country_code"
     total_word = "EXPORT TOTAL" if flow == "X" else "IMPORT TOTAL"
@@ -267,6 +272,11 @@ def parse_table04(path, flow, orientation, pages=None, repairs=None):
         else:
             unit, desc = None, " ".join(name)
             code = code.zfill(3) if code is not None else desc
+
+        # Harvest the BBS product label for dim_hs (M3); first non-null wins per code.
+        # Pure side-write — touches neither the fact rows nor reconciliation.
+        if is_commodity and desc_sink is not None:
+            desc_sink.setdefault(code, (unit, desc))
 
         if is_commodity == commodity_major:             # HEADER row (subtotal)
             if is_commodity:
@@ -352,11 +362,13 @@ def main():
 
     for fy, flows in SOURCES.items():
         year_facts = []
+        # One label store per year, shared across flows and the Table 05 supplement.
+        hs_desc = {}
         for flow in ("X", "M"):
             src = flows[flow]
             df, parents, grand, pkey = parse_table04(
                 resolve(src["t04"]), flow, ORIENTATION[flow], src.get("t04_pages"),
-                src.get("repairs"))
+                src.get("repairs"), desc_sink=hs_desc)
 
             if "t05" in src:
                 # Older export Table 04s omit the smallest commodities entirely; the
@@ -365,7 +377,8 @@ def main():
                 # headers, also covers a 2020-21 defect where one commodity's header
                 # printed but its country rows didn't), so T04 stays the record.
                 df5, _, _, _ = parse_table04(
-                    resolve(src["t05"]), flow, "country_major", src.get("t05_pages"))
+                    resolve(src["t05"]), flow, "country_major", src.get("t05_pages"),
+                    desc_sink=hs_desc)
                 add = df5[~df5["hs8"].isin(set(df["hs8"])) & (df5["hs8"] != "UNKNOWN")]
                 print(f"  [note] Table 05 supplement: {add['hs8'].nunique():,} commodities "
                       f"absent from Table 04 -> +{len(add):,} rows, "
@@ -381,6 +394,13 @@ def main():
         out = OUT_DIR / f"fts_{fy}_facts.csv"
         facts.to_csv(out, index=False)
         print(f"\nWrote {len(facts):,} fact rows -> {out.relative_to(ROOT)}")
+
+        # Side artifact for M3's dim_hs (git-ignored, like the facts). One row per HS8.
+        desc_df = pd.DataFrame([(k, u, d) for k, (u, d) in sorted(hs_desc.items())],
+                               columns=["hs8", "unit", "description"])
+        desc_out = OUT_DIR / f"fts_{fy}_hs_desc.csv"
+        desc_df.to_csv(desc_out, index=False)
+        print(f"Wrote {len(desc_df):,} HS8 descriptions -> {desc_out.relative_to(ROOT)}")
 
         exp = facts[facts["flow"] == "X"]
         usable = exp[(exp["quantity"] > 0) & exp["unit"].notna()]

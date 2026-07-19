@@ -10,10 +10,12 @@ openpyxl>=3.1           # read the .xlsx workbook (streaming, read-only)
 pypdf>=4.0              # fast text extraction (clean, well-formed PDF years)
 pdfplumber>=0.11        # layout/positional extraction (messy older PDF years)
 
+# --- M3: clean + dimensional model + Parquet ---
+pyarrow>=14.0           # engine pandas uses to write partitioned Parquet (Athena reads it natively)
+
 # --- dev/testing ---
 pytest>=8.0             # parser unit tests + data-contract tests over the interim CSVs (tests/)
 
 # --- Later milestones (uncomment when reached) ---
-# pyarrow               # write partitioned Parquet (M3)
 # boto3                 # AWS SDK for Python (M4+)
 # comtradeapicall       # official UN Comtrade client (stretch scope)

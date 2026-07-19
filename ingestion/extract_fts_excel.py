@@ -102,13 +102,17 @@ def _commodity_unit_offset(row, desc):
     return None, 0
 
 
-def parse_table04(ws, flow, orientation):
+def parse_table04(ws, flow, orientation, desc_sink=None):
     """Flatten a Table 04 sheet into canonical per-half fact rows.
 
     The commodity row carries the HS8 code + unit (and may be quote-shifted); the
     country row carries the country code + name (never shifted, no unit). Whichever
     is the header sets the running context; each detail row emits facts by pairing
     its own quantity/value with that context, unpivoted into H1 / H2 rows.
+
+    `desc_sink` (optional): a dict populated as a pure SIDE-WRITE with the BBS
+    product label per HS8 (`{hs8: (unit, description)}`) for building dim_hs in M3.
+    Left as None by every existing caller/test, so the returned facts are unchanged.
     """
     commodity_major = orientation == "commodity_major"
     parent_key = "hs8" if commodity_major else "country_code"
@@ -141,6 +145,11 @@ def parse_table04(ws, flow, orientation):
         else:
             unit = None
             q1, v1, q2, v2, qf, vf = _read6(row, 0)
+
+        # Harvest the BBS product label for dim_hs (M3); first non-null wins per code.
+        # Pure side-write — touches neither the fact rows nor reconciliation.
+        if is_commodity and desc_sink is not None:
+            desc_sink.setdefault(d.zfill(8), (unit, desc if isinstance(desc, str) else ""))
 
         # A commodity row is the header for exports; a country row is the header for imports.
         if is_commodity == commodity_major:             # this row is a HEADER (subtotal)
@@ -260,9 +269,12 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     wb = load_workbook(XLSX, read_only=True, data_only=True)
 
-    all_facts, all_ok = [], True
+    # One label store per year, shared across flows (an HS8 is the same product
+    # whether imported or exported); exports are read first, so their label wins.
+    all_facts, all_ok, hs_desc = [], True, {}
     for flow in ("X", "M"):
-        df, parents, grand, pkey = parse_table04(wb[TABLE04[flow]], flow, ORIENTATION[flow])
+        df, parents, grand, pkey = parse_table04(wb[TABLE04[flow]], flow,
+                                                 ORIENTATION[flow], hs_desc)
         t01, t01_grand = parse_table01(wb[TABLE01[flow]])
         all_ok &= reconcile(df, parents, grand, t01, t01_grand, flow, pkey)
         all_facts.append(df)
@@ -271,6 +283,13 @@ def main():
     out = OUT_DIR / f"fts_{FY}_facts.csv"
     facts.to_csv(out, index=False)
     print(f"\nWrote {len(facts):,} fact rows -> {out.relative_to(ROOT)}")
+
+    # Side artifact for M3's dim_hs (git-ignored, like the facts). One row per HS8.
+    desc_df = pd.DataFrame([(k, u, d) for k, (u, d) in sorted(hs_desc.items())],
+                           columns=["hs8", "unit", "description"])
+    desc_out = OUT_DIR / f"fts_{FY}_hs_desc.csv"
+    desc_df.to_csv(desc_out, index=False)
+    print(f"Wrote {len(desc_df):,} HS8 descriptions -> {desc_out.relative_to(ROOT)}")
 
     # Price-readiness: our headline questions need a unit price (value / quantity),
     # which only exists where quantity > 0 and a unit is known. Surface the coverage.

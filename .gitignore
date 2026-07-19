@@ -23,6 +23,8 @@ data/
 *.parquet
 *.csv
 !docs/**/*.csv
+# curated public seed data (FX rates, HS chapter names) — versioned model inputs, not extracted data
+!reference/*.csv
 raw/
 processed/
 athena-results/

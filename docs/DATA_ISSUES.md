@@ -12,9 +12,20 @@ forward from the extraction logs), and the open ones are pinned by
 
 ---
 
+> **M3 STATUS (2026-07-18).** Items 1, 2, 6 are now handled in
+> `transform/build_warehouse.py` and asserted in `tests/test_processed_data.py`
+> (see notes inline below). Item 5 (FX) is handled pending owner verification of the
+> ten rates. Items 3 and 4 remain, by design, as M5 view-layer footnotes. A new
+> source-consistency fix (country-code zero-padding) was found and fixed in M3 —
+> item 7 below.
+
 ## Open — M3 must handle these
 
 ### 1. Duplicate grain keys: the fact-table grain is not yet unique (the main M3 action)
+
+> **HANDLED (M3).** `build_warehouse.py` groups by the grain and sums quantity/value
+> (834 finer-than-HS8 rows collapsed; 705,737 -> 704,903). Conservation verified exact
+> per year-flow; grain uniqueness asserted in `test_processed_data.py`.
 
 **What.** The declared grain is one row = (flow, fy, half, hs8, country_code, unit) —
 but some source line items are *finer* than HS8 (sub-codes or repeated commodity
@@ -80,6 +91,11 @@ surfaces in a per-destination result for 2022-23. Known blemish, stated honestly
 
 ### 5. No FX yet: "price improvement" is still entangled with the taka
 
+> **HANDLED (M3), pending rate sign-off.** `dim_fx_rate` built from
+> `reference/fx_bdt_usd.csv` (10 fiscal-half rows). USD is derived in M5 views, not
+> stored in facts. The ten rates are curated central-bank period averages and await
+> owner verification before the values are considered final.
+
 **What.** All values are BDT, and the taka fell from ~85 to ~120 per USD across the
 window (~30%). In taka, almost everything looks like a price improvement.
 
@@ -88,6 +104,10 @@ every price in BDT *and* USD. Until this exists, no trend conclusion from this d
 is meaningful. This is the analytical blocker, not a cosmetic one.
 
 ### 6. `country_name` still denormalized inline
+
+> **HANDLED (M3).** Split into `dim_country` (one authoritative name per code, taken
+> from the latest non-null fiscal year; name-keyed territories given surrogate codes;
+> explicit UNKNOWN member). `country_name` dropped from the fact table.
 
 **What.** The interim CSVs repeat the country name on every row (readability during
 extraction), and spellings drift across years ("UNTD ARAB EM" etc.). A handful of
@@ -125,8 +145,29 @@ the source contradicts itself"). They need no M3 work.
 
 ---
 
+## Closed — fixed during M3
+
+### 7. Country codes were not zero-padded across extractors (found + fixed in M3)
+
+**What.** The Excel extractor (2024-25) left numeric country codes unpadded (Canada =
+`16`) while the PDF extractor padded them to three digits (`016`). Same for the USA
+(`66`/`066`) and others — 7,602 rows in 2024-25. Left alone this splits a country's
+history exactly at the Excel/PDF boundary while every total still ties, so
+reconciliation could never have caught it.
+
+**Fix.** `build_warehouse.py` normalises every numeric country code to three digits
+before aggregating or building dims (the country-code twin of the hs8 zfill). A
+handful of 2023-24 export rows whose destination *name* was lost keep their real code
+with a fallback label (`Unknown (<code>)`), and one 2023-24 mis-read (75 codes briefly
+labelled "TUVALU") is neutralised automatically because dim_country takes each code's
+name from its latest non-null year (2024-25 overrides 2023-24). All confined to
+< 0.06% of value.
+
+---
+
 ## The one-line summary for M3
 
-The data is proven against BBS but not yet modeled: **aggregate to the grain, split
-out the dimensions, add FX** — everything else above is either already handled or a
-footnote-sized residual (< 0.01% of value).
+Done: **aggregated to the grain (conserved to the taka), split out dim_hs /
+dim_country / dim_fx_rate, conformed the keys, written Parquet partitioned by
+flow+year, QC verdict PASS** (`docs/QC_M3.md`). The only open thread is owner
+verification of the ten FX rates; items 3 and 4 stay as M5 view-layer footnotes.
