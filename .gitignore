@@ -36,6 +36,9 @@ package/
 
 # ---- Local-only notes (not public yet) ----
 LEARNING.md
+INTERVIEW_PREP.md
+# prose docs + generated reports (QC_M3.md, STATS.md) stay local; repo = code only
+docs/*.md
 CLAUDE.md
 
 # ---- Comtrade-era stretch scope: kept locally, not in the public repo ----

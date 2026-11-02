@@ -13,6 +13,9 @@ pdfplumber>=0.11        # layout/positional extraction (messy older PDF years)
 # --- M3: clean + dimensional model + Parquet ---
 pyarrow>=14.0           # engine pandas uses to write partitioned Parquet (Athena reads it natively)
 
+# --- M5: analysis ---
+scipy>=1.11             # Welch t-test, chi-squared, Spearman (analysis/stats_tests.py)
+
 # --- dev/testing ---
 pytest>=8.0             # parser unit tests + data-contract tests over the interim CSVs (tests/)
 
