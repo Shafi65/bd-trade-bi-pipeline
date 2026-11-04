@@ -3,6 +3,8 @@
 End-to-end BI pipeline analyzing Bangladesh's export prices and product diversification
 (FY2020-21 → FY2024-25) from Bangladesh Bureau of Statistics trade publications.
 
+**Status:** ongoing.
+
 ```
 BBS PDFs/Excel → Python extraction → reconciliation gate → Parquet star schema
 → S3 → Glue Data Catalog → Athena (SQL views) → statistical tests / dashboard
