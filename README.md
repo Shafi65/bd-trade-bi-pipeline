@@ -8,6 +8,8 @@ BBS PDFs/Excel → Python extraction → reconciliation gate → Parquet star sc
 → S3 → Glue Data Catalog → Athena (SQL views) → statistical tests / dashboard
 ```
 
+![QuickSight dashboard](docs/dashboard.png)
+
 ## Setup
 
 ```bash
