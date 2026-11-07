@@ -174,6 +174,7 @@ WITH p AS (
     GROUP BY fy, half, period_ord
 )
 SELECT p.*,
+       concat(fy, ' ', half)                                            AS period_label, -- display label; sorts chronologically
        apparel_usd / export_usd                                         AS apparel_share,
        export_usd / lag(export_usd, 2) OVER (ORDER BY period_ord) - 1   AS yoy_usd,  -- same half, prior year
        export_bdt / lag(export_bdt, 2) OVER (ORDER BY period_ord) - 1   AS yoy_bdt
@@ -483,3 +484,61 @@ SELECT
 FROM bd_trade.v_new_products n
 LEFT JOIN adjacent a ON a.hs8 = n.hs8
 GROUP BY n.hs8, n.description, n.hs4, n.chapter_name, n.segment, n.is_catch_all, n.usd_2024_25, n.n_markets_2024_25;
+
+
+-- ---------------------------------------------------------------------
+-- Presentation views — small, dashboard-ready slices of the views above.
+-- The filtering/ranking logic lives here (governed, testable SQL), so the
+-- dashboard only displays; no hidden filters or calculated fields in the BI tool.
+-- ---------------------------------------------------------------------
+
+-- Q2 for the dashboard: top 10 price gainers + top 10 decliners among clean,
+-- material products (>= $5M exports in their latest year).
+CREATE OR REPLACE VIEW bd_trade.v_price_movers AS
+WITH clean AS (
+    SELECT hs8, unit, description, segment, trend_cagr_usd, last_value_usd,
+           row_number() OVER (ORDER BY trend_cagr_usd DESC) AS rk_up,
+           row_number() OVER (ORDER BY trend_cagr_usd ASC)  AS rk_down
+    FROM bd_trade.v_price_change
+    WHERE NOT is_catch_all AND NOT is_volatile AND last_value_usd >= 5000000
+)
+SELECT hs8, unit,
+       concat(substr(description, 1, 30), ' (', hs8, ')')   AS product,
+       segment, trend_cagr_usd, last_value_usd,
+       CASE WHEN rk_up <= 10 THEN 'Top gainer' ELSE 'Top decliner' END AS mover_type
+FROM clean
+WHERE rk_up <= 10 OR rk_down <= 10;
+
+-- Q3 for the dashboard: share of destination prices significantly BELOW the
+-- product norm (z <= -2), by market group. Same population as the chi-squared test.
+CREATE OR REPLACE VIEW bd_trade.v_market_discount AS
+SELECT market_group,
+       count(*)                                          AS product_destination_pairs,
+       count_if(is_significant AND z_score < 0)          AS significantly_low,
+       CAST(count_if(is_significant AND z_score < 0) AS double) / count(*) AS low_price_rate
+FROM bd_trade.v_destination_deviation
+GROUP BY market_group;
+
+
+-- Headline KPI row: one row, one column per KPI card. Every figure is read from an
+-- existing view, so the cards can never disagree with the charts below them.
+CREATE OR REPLACE VIEW bd_trade.v_headline_kpis AS
+WITH yr AS (
+    SELECT fy, sum(export_usd) AS usd, sum(export_bdt) AS bdt
+    FROM bd_trade.v_export_kpis GROUP BY fy
+),
+latest AS (SELECT max(fy) AS fy FROM yr)
+SELECT
+    l.fy                                                       AS latest_fy,
+    cur.usd                                                    AS export_usd,
+    cur.usd / prev.usd - 1                                     AS yoy_usd,
+    cur.bdt / prev.bdt - 1                                     AS yoy_bdt,
+    d.apparel_share,
+    (SELECT low_price_rate FROM bd_trade.v_market_discount
+      WHERE market_group = 'Non-traditional')                  AS low_price_rate_nontrad,
+    (SELECT low_price_rate FROM bd_trade.v_market_discount
+      WHERE market_group = 'Traditional')                      AS low_price_rate_trad
+FROM latest l
+JOIN yr cur  ON cur.fy = l.fy
+JOIN yr prev ON CAST(substr(prev.fy, 1, 4) AS integer) = CAST(substr(l.fy, 1, 4) AS integer) - 1
+JOIN bd_trade.v_diversification d ON d.fy = l.fy;
