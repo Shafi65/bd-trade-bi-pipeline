@@ -19,7 +19,8 @@ python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
 cp .env.example .env          # set ATHENA_BUCKET and ATHENA_WORKGROUP
 ```
 
-Source publications go in `Bd_Exportdata/` (not included).
+Source data: BBS Foreign Trade Statistics publications (FY2020-21 to FY2024-25), downloaded
+from bbs.gov.bd. Place them in `Bd_Exportdata/` (not included in this repo).
 
 ## Run
 
