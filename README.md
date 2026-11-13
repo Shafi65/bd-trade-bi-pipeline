@@ -1,7 +1,5 @@
 # Bangladesh Foreign Trade Analytics — AWS BI Pipeline
 
-[![tests](https://github.com/Shafi65/bd-trade-bi-pipeline/actions/workflows/tests.yml/badge.svg)](https://github.com/Shafi65/bd-trade-bi-pipeline/actions/workflows/tests.yml)
-
 End-to-end BI pipeline on Bangladesh's export prices and diversification, FY2020-21 to
 FY2024-25, built from Bangladesh Bureau of Statistics (BBS) trade publications. **Status:** ongoing.
 
@@ -40,7 +38,7 @@ The extractors exit with an error unless the data matches BBS's own totals to wi
 - **Parser bug:** a page footer made chapter 65 read as "1 taka". The parser now uses the H1 + H2 = FY rule to find the right numbers.
 - **Integration bug:** country codes were zero-padded differently in the Excel and PDF sources, which would have split Canada in two.
 
-96 tests cover parsing, data snapshots, grain uniqueness, value conservation and referential integrity. The 23 parser tests run in CI. The 73 data tests need the source files, so they run locally.
+96 tests cover parsing, data snapshots, grain uniqueness, value conservation and referential integrity. The 23 parser tests run without the source files. The 73 data tests need them, so they run locally.
 
 ## Limitations
 
